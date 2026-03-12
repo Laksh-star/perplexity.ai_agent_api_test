@@ -7,18 +7,14 @@ const feedback = document.querySelector("#feedback");
 const agentEvidence = document.querySelector("#agent-evidence");
 const artifacts = document.querySelector("#artifacts");
 const overview = document.querySelector("#overview");
-const vendorResults = document.querySelector("#vendor-results");
+const competitorResults = document.querySelector("#competitor-results");
 const requestPreview = document.querySelector("#request-preview");
 const runMeta = document.querySelector("#run-meta");
 
 let cachedDefaults = null;
 
 function listToTextarea(values) {
-  if (!Array.isArray(values)) {
-    return "";
-  }
-
-  return values.join("\n");
+  return Array.isArray(values) ? values.join("\n") : "";
 }
 
 function textareaToList(value) {
@@ -26,11 +22,7 @@ function textareaToList(value) {
     return [];
   }
 
-  if (typeof value !== "string") {
-    return [String(value).trim()].filter(Boolean);
-  }
-
-  return value
+  return String(value)
     .split(/\n|,/u)
     .map((entry) => entry.trim())
     .filter(Boolean);
@@ -76,7 +68,7 @@ function hideResultBlocks() {
   agentEvidence.hidden = true;
   artifacts.hidden = true;
   overview.hidden = true;
-  vendorResults.hidden = true;
+  competitorResults.hidden = true;
   requestPreview.hidden = true;
 }
 
@@ -155,13 +147,11 @@ function renderArtifacts(result) {
   artifacts.hidden = false;
   artifacts.innerHTML = "";
 
-  const items = [
+  for (const [label, filePath] of [
     ["JSON report", result.artifacts.jsonPath],
     ["Markdown brief", result.artifacts.markdownPath],
     ["Raw API response", result.artifacts.rawPath]
-  ];
-
-  for (const [label, filePath] of items) {
+  ]) {
     const item = document.createElement("div");
     item.className = "artifact-item";
     item.innerHTML = `<span>${label}</span><code>${filePath}</code>`;
@@ -176,6 +166,7 @@ function renderOverview(report) {
       <p class="overview-label">Overview</p>
       <p class="overview-text">${report.overview}</p>
       <div class="overview-meta">
+        <span>${report.product_name}</span>
         <span>${report.query_window.start_date} to ${report.query_window.end_date}</span>
         <span>${report.preset}</span>
         <span>${report.model_used}</span>
@@ -184,41 +175,122 @@ function renderOverview(report) {
   `;
 }
 
-function createSourceList(update) {
-  if (!update.sources || update.sources.length === 0) {
-    return `<p class="source-fallback">Source titles: ${update.source_titles.join("; ")}</p>`;
+function renderSourceLinks(items) {
+  const linkedItems = items.flatMap((item) => item.sources ?? []);
+  if (linkedItems.length === 0) {
+    return "";
   }
 
-  const links = update.sources
-    .map((source) => `<a href="${source.url}" target="_blank" rel="noreferrer">${source.title}</a>`)
-    .join("");
+  const deduped = [];
+  const seen = new Set();
+  for (const source of linkedItems) {
+    const key = `${source.title}::${source.url}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(source);
+  }
 
-  return `<div class="source-links">${links}</div>`;
+  return `
+    <div class="source-links">
+      ${deduped.map((source) => `<a href="${source.url}" target="_blank" rel="noreferrer">${source.title}</a>`).join("")}
+    </div>
+  `;
 }
 
-function renderVendors(report) {
-  vendorResults.hidden = false;
-  vendorResults.innerHTML = "";
+function renderInsightList(title, items, formatter) {
+  if (!items || items.length === 0) {
+    return `
+      <section class="intel-section">
+        <h4>${title}</h4>
+        <p class="empty-state">No strong items found.</p>
+      </section>
+    `;
+  }
 
-  for (const vendor of report.vendors) {
+  return `
+    <section class="intel-section">
+      <h4>${title}</h4>
+      ${items
+        .map((item) => formatter(item))
+        .join("")}
+      ${renderSourceLinks(items)}
+    </section>
+  `;
+}
+
+function renderCompetitors(report) {
+  competitorResults.hidden = false;
+  competitorResults.innerHTML = "";
+
+  for (const competitor of report.competitors) {
     const card = document.createElement("article");
     card.className = "vendor-card";
 
-    const updatesMarkup =
-      vendor.status === "no_updates_found" || vendor.updates.length === 0
-        ? `<p class="empty-state">No notable official updates found in the requested window.</p>`
-        : vendor.updates
-            .map(
-              (update) => `
+    const body =
+      competitor.status === "no_signal_found"
+        ? `<p class="empty-state">No strong recent signals found in the requested window.</p>`
+        : [
+            renderInsightList(
+              "Signals",
+              competitor.signals,
+              (item) => `
                 <div class="update-card">
                   <div class="update-head">
-                    <h4>${update.title}</h4>
-                    <span class="confidence confidence-${update.confidence}">${update.confidence}</span>
+                    <h5>${item.title}</h5>
+                    <span class="confidence confidence-${item.confidence}">${item.confidence}</span>
                   </div>
-                  <p class="update-meta">${update.date} · ${update.category}</p>
-                  <p>${update.summary}</p>
-                  <p class="impact">${update.impact}</p>
-                  ${createSourceList(update)}
+                  <p class="update-meta">${item.date}</p>
+                  <p>${item.why_it_matters}</p>
+                </div>
+              `
+            ),
+            renderInsightList(
+              "Pricing Changes",
+              competitor.pricing_changes,
+              (item) => `
+                <div class="update-card">
+                  <h5>${item.title}</h5>
+                  <p class="update-meta">${item.date}</p>
+                  <p>${item.summary}</p>
+                </div>
+              `
+            ),
+            renderInsightList(
+              "Positioning Moves",
+              competitor.positioning_moves,
+              (item) => `
+                <div class="update-card">
+                  <h5>${item.title}</h5>
+                  <p class="update-meta">${item.date}</p>
+                  <p>${item.summary}</p>
+                </div>
+              `
+            ),
+            renderInsightList(
+              "User Pain Points",
+              competitor.user_pain_points,
+              (item) => `
+                <div class="update-card">
+                  <h5>${item.title}</h5>
+                  <p class="update-meta">${item.date}</p>
+                  <p>${item.summary}</p>
+                </div>
+              `
+            )
+          ].join("");
+
+    const counterMoves =
+      competitor.recommended_counter_moves.length === 0
+        ? `<p class="empty-state">No counter-moves generated.</p>`
+        : competitor.recommended_counter_moves
+            .map(
+              (move) => `
+                <div class="counter-move">
+                  <h5>${move.title}</h5>
+                  <p>${move.summary}</p>
+                  <p class="update-meta">Impact: ${move.expected_impact} · Effort: ${move.effort}</p>
                 </div>
               `
             )
@@ -226,13 +298,18 @@ function renderVendors(report) {
 
     card.innerHTML = `
       <div class="vendor-head">
-        <h3>${vendor.vendor}</h3>
-        <span class="status status-${vendor.status}">${vendor.status.replaceAll("_", " ")}</span>
+        <h3>${competitor.competitor}</h3>
+        <span class="status status-threat-${competitor.threat_level}">${competitor.threat_level}</span>
       </div>
-      ${updatesMarkup}
+      <p class="impact">${competitor.summary}</p>
+      ${body}
+      <section class="intel-section">
+        <h4>Recommended Counter-Moves</h4>
+        ${counterMoves}
+      </section>
     `;
 
-    vendorResults.append(card);
+    competitorResults.append(card);
   }
 }
 
@@ -245,19 +322,17 @@ function getPayload() {
     }
 
     const normalized = String(value).trim();
-    if (normalized === "") {
-      return undefined;
-    }
-
-    return normalized;
+    return normalized === "" ? undefined : normalized;
   };
 
   return {
+    productName: formData.get("productName"),
     preset: formData.get("preset"),
     days: readNumberField("days"),
     maxSteps: readNumberField("maxSteps"),
-    maxItemsPerVendor: readNumberField("maxItemsPerVendor"),
-    vendors: textareaToList(formData.get("vendors")),
+    maxItemsPerCompetitor: readNumberField("maxItemsPerCompetitor"),
+    competitors: textareaToList(formData.get("competitors")),
+    targetChannels: textareaToList(formData.get("targetChannels")),
     domains: textareaToList(formData.get("domains")),
     restrictDomains: form.elements.restrictDomains.checked,
     deliver: form.elements.deliver.checked
@@ -265,17 +340,20 @@ function getPayload() {
 }
 
 async function fetchDefaults() {
-  const response = await fetch("/api/defaults");
+  const response = await fetch("/api/competitive/defaults");
   const payload = await response.json();
   if (!response.ok || !payload.ok) {
     throw new Error(payload.error ?? "Unable to load defaults.");
   }
+
   cachedDefaults = payload.defaults;
+  form.elements.productName.value = cachedDefaults.productName;
   form.elements.preset.value = cachedDefaults.preset;
   form.elements.days.value = cachedDefaults.days;
   form.elements.maxSteps.value = cachedDefaults.maxSteps;
-  form.elements.maxItemsPerVendor.value = cachedDefaults.maxItemsPerVendor;
-  form.elements.vendors.value = listToTextarea(cachedDefaults.vendors);
+  form.elements.maxItemsPerCompetitor.value = cachedDefaults.maxItemsPerCompetitor;
+  form.elements.competitors.value = listToTextarea(cachedDefaults.competitors);
+  form.elements.targetChannels.value = listToTextarea(cachedDefaults.targetChannels);
   form.elements.domains.value = listToTextarea(cachedDefaults.domains);
   form.elements.restrictDomains.checked = true;
   form.elements.deliver.checked = false;
@@ -301,7 +379,7 @@ async function refreshHealth() {
 }
 
 async function postRun(payload) {
-  const response = await fetch("/api/run", {
+  const response = await fetch("/api/competitive/run", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -340,7 +418,7 @@ form.addEventListener("submit", async (event) => {
     renderAgentEvidence(result);
     renderArtifacts(result);
     renderOverview(result.report);
-    renderVendors(result.report);
+    renderCompetitors(result.report);
   } catch (error) {
     setFeedback(error.message, "bad");
     runMeta.textContent = "Run failed.";
@@ -377,11 +455,13 @@ fillDefaultsButton.addEventListener("click", async () => {
     if (!cachedDefaults) {
       await fetchDefaults();
     } else {
+      form.elements.productName.value = cachedDefaults.productName;
       form.elements.preset.value = cachedDefaults.preset;
       form.elements.days.value = cachedDefaults.days;
       form.elements.maxSteps.value = cachedDefaults.maxSteps;
-      form.elements.maxItemsPerVendor.value = cachedDefaults.maxItemsPerVendor;
-      form.elements.vendors.value = listToTextarea(cachedDefaults.vendors);
+      form.elements.maxItemsPerCompetitor.value = cachedDefaults.maxItemsPerCompetitor;
+      form.elements.competitors.value = listToTextarea(cachedDefaults.competitors);
+      form.elements.targetChannels.value = listToTextarea(cachedDefaults.targetChannels);
       form.elements.domains.value = listToTextarea(cachedDefaults.domains);
       form.elements.restrictDomains.checked = true;
       form.elements.deliver.checked = false;

@@ -2,25 +2,40 @@ import fs from "node:fs";
 import path from "node:path";
 import { buildArtifactBaseName, enrichReport, renderMarkdown } from "./report.js";
 import { runReleaseMonitor } from "./perplexity.js";
+import {
+  buildCompetitiveArtifactBaseName,
+  enrichCompetitiveReport,
+  renderCompetitiveMarkdown
+} from "./competitive-report.js";
+import { runCompetitiveMonitor } from "./competitive.js";
+import { getConfiguredDestinations, sendConfiguredDelivery } from "./delivery.js";
 
-export async function executeMonitor(options, runtime = {}) {
+async function executeWorkflow({
+  options,
+  runtime = {},
+  runner,
+  enricher,
+  renderer,
+  artifactBaseNameBuilder
+}) {
   const cwd = runtime.cwd ?? process.cwd();
   const shouldWriteArtifacts = runtime.writeArtifacts ?? true;
-  const result = await runReleaseMonitor(options);
-  const enrichedReport = enrichReport(result.report, result.response, options);
+  const result = await runner(options);
+  const enrichedReport = enricher(result.report, result.response, options);
 
   const execution = {
     requestBody: result.requestBody,
     response: result.response,
     report: enrichedReport,
-    artifacts: null
+    artifacts: null,
+    delivery: null
   };
 
   if (!shouldWriteArtifacts) {
     return execution;
   }
 
-  const artifactBaseName = buildArtifactBaseName(enrichedReport);
+  const artifactBaseName = artifactBaseNameBuilder(enrichedReport);
   const outputDirectory = path.resolve(cwd, options.outDir);
 
   fs.mkdirSync(outputDirectory, { recursive: true });
@@ -30,7 +45,7 @@ export async function executeMonitor(options, runtime = {}) {
   const rawPath = path.join(outputDirectory, `${artifactBaseName}.raw.json`);
 
   fs.writeFileSync(jsonPath, `${JSON.stringify(enrichedReport, null, 2)}\n`);
-  fs.writeFileSync(markdownPath, `${renderMarkdown(enrichedReport)}\n`);
+  fs.writeFileSync(markdownPath, `${renderer(enrichedReport)}\n`);
   fs.writeFileSync(rawPath, `${JSON.stringify(result.response, null, 2)}\n`);
 
   execution.artifacts = {
@@ -39,7 +54,42 @@ export async function executeMonitor(options, runtime = {}) {
     rawPath
   };
 
+  const shouldDeliver = runtime.deliver === true;
+  if (shouldDeliver) {
+    execution.delivery = await sendConfiguredDelivery({
+      title: `${enrichedReport.preset} · ${artifactBaseName}`,
+      markdown: renderer(enrichedReport)
+    });
+  } else {
+    execution.delivery = {
+      deliveries: [],
+      errors: []
+    };
+  }
+
   return execution;
+}
+
+export async function executeMonitor(options, runtime = {}) {
+  return executeWorkflow({
+    options,
+    runtime,
+    runner: runReleaseMonitor,
+    enricher: enrichReport,
+    renderer: renderMarkdown,
+    artifactBaseNameBuilder: buildArtifactBaseName
+  });
+}
+
+export async function executeCompetitiveWorkflow(options, runtime = {}) {
+  return executeWorkflow({
+    options,
+    runtime,
+    runner: runCompetitiveMonitor,
+    enricher: enrichCompetitiveReport,
+    renderer: renderCompetitiveMarkdown,
+    artifactBaseNameBuilder: buildCompetitiveArtifactBaseName
+  });
 }
 
 function parsePositiveInt(value, label, fallback) {
@@ -104,6 +154,7 @@ export function coerceRunOptions(input, defaults) {
     vendors: vendors.length > 0 ? vendors : defaults.vendors,
     domains: restrictDomains ? (domains.length > 0 ? domains : defaults.domains) : [],
     outDir: typeof input.outDir === "string" && input.outDir.trim() ? input.outDir.trim() : defaults.outDir,
+    deliver: parseBoolean(input.deliver, false),
     dryRun: false,
     verbose: false
   };
@@ -114,3 +165,48 @@ export function coerceRunOptions(input, defaults) {
 
   return options;
 }
+
+export function coerceCompetitiveOptions(input, defaults) {
+  const competitors = splitList(input.competitors);
+  const domains = splitList(input.domains);
+  const targetChannels = splitList(input.targetChannels);
+  const restrictDomains = parseBoolean(input.restrictDomains, true);
+
+  const options = {
+    productName:
+      typeof input.productName === "string" && input.productName.trim()
+        ? input.productName.trim()
+        : defaults.productName,
+    competitors: competitors.length > 0 ? competitors : defaults.competitors,
+    targetChannels: targetChannels.length > 0 ? targetChannels : defaults.targetChannels,
+    days: parsePositiveInt(input.days, "days", defaults.days),
+    preset: typeof input.preset === "string" && input.preset.trim() ? input.preset.trim() : defaults.preset,
+    maxSteps: parsePositiveInt(input.maxSteps, "maxSteps", defaults.maxSteps),
+    maxItemsPerCompetitor: parsePositiveInt(
+      input.maxItemsPerCompetitor,
+      "maxItemsPerCompetitor",
+      defaults.maxItemsPerCompetitor
+    ),
+    domains: restrictDomains ? (domains.length > 0 ? domains : defaults.domains) : [],
+    outDir: typeof input.outDir === "string" && input.outDir.trim() ? input.outDir.trim() : defaults.outDir,
+    deliver: parseBoolean(input.deliver, false),
+    dryRun: false,
+    verbose: false
+  };
+
+  if (!options.productName) {
+    throw new Error("productName is required.");
+  }
+
+  if (options.competitors.length === 0) {
+    throw new Error("At least one competitor is required.");
+  }
+
+  if (options.maxSteps > 10) {
+    throw new Error("maxSteps cannot exceed 10.");
+  }
+
+  return options;
+}
+
+export { getConfiguredDestinations };

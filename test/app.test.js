@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { coerceRunOptions } from "../src/app.js";
+import { coerceCompetitiveOptions, coerceRunOptions } from "../src/app.js";
 
 test("coerceRunOptions splits textarea input", () => {
   const options = coerceRunOptions(
@@ -45,6 +45,57 @@ test("coerceRunOptions allows unrestricted search when domain restriction is dis
       maxItemsPerVendor: 2,
       vendors: ["OpenAI"],
       domains: ["openai.com"],
+      outDir: "reports"
+    }
+  );
+
+  assert.deepEqual(options.domains, []);
+});
+
+test("coerceCompetitiveOptions applies product and competitor defaults", () => {
+  const options = coerceCompetitiveOptions(
+    {
+      productName: "Agent app",
+      competitors: "OpenAI\nPerplexity",
+      targetChannels: "blogs,pricing pages",
+      maxItemsPerCompetitor: "4"
+    },
+    {
+      productName: "Fallback",
+      competitors: ["FallbackCo"],
+      targetChannels: ["blogs"],
+      days: 7,
+      preset: "deep-research",
+      maxSteps: 3,
+      maxItemsPerCompetitor: 3,
+      domains: ["openai.com"],
+      outDir: "reports"
+    }
+  );
+
+  assert.equal(options.productName, "Agent app");
+  assert.deepEqual(options.competitors, ["OpenAI", "Perplexity"]);
+  assert.deepEqual(options.targetChannels, ["blogs", "pricing pages"]);
+  assert.equal(options.maxItemsPerCompetitor, 4);
+});
+
+test("coerceCompetitiveOptions allows unrestricted search when domain restriction is disabled", () => {
+  const options = coerceCompetitiveOptions(
+    {
+      productName: "Agent app",
+      competitors: "Perplexity",
+      domains: "",
+      restrictDomains: false
+    },
+    {
+      productName: "Fallback",
+      competitors: ["FallbackCo"],
+      targetChannels: ["blogs"],
+      days: 7,
+      preset: "deep-research",
+      maxSteps: 3,
+      maxItemsPerCompetitor: 3,
+      domains: ["perplexity.ai"],
       outDir: "reports"
     }
   );

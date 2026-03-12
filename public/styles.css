@@ -48,6 +48,26 @@ body::before {
   padding: 40px 0 56px;
 }
 
+.top-nav {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.nav-link {
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+  background: rgba(255, 248, 235, 0.76);
+  border: 1px solid rgba(31, 28, 24, 0.08);
+}
+
+.nav-link-active {
+  color: #fff8f3;
+  background: rgba(31, 28, 24, 0.9);
+}
+
 .hero {
   padding: 28px 30px;
   border: 1px solid var(--line);
@@ -411,6 +431,23 @@ code,
   border: 1px solid rgba(31, 28, 24, 0.08);
 }
 
+.intel-section {
+  margin-top: 16px;
+}
+
+.intel-section h4,
+.update-card h5,
+.counter-move h5 {
+  margin: 0 0 8px;
+}
+
+.counter-move {
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(245, 239, 226, 0.76);
+}
+
 .vendor-head,
 .update-head {
   display: flex;
@@ -448,6 +485,22 @@ code,
 .status-completed {
   background: rgba(31, 106, 66, 0.14);
   color: var(--good);
+}
+
+.status-threat-low {
+  background: rgba(31, 106, 66, 0.14);
+  color: var(--good);
+}
+
+.status-threat-medium {
+  background: rgba(138, 91, 0, 0.14);
+  color: var(--warn);
+}
+
+.status-threat-high,
+.status-threat-existential {
+  background: rgba(141, 29, 29, 0.14);
+  color: var(--bad);
 }
 
 .strength {

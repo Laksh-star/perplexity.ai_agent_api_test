@@ -27,3 +27,8 @@ test("parseArgs reads csv options", () => {
   assert.deepEqual(options.domains, ["openai.com", "anthropic.com"]);
   assert.equal(options.dryRun, true);
 });
+
+test("parseArgs enables delivery flag", () => {
+  const options = parseArgs(["--deliver"]);
+  assert.equal(options.deliver, true);
+});

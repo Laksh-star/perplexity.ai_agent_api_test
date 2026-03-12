@@ -21,6 +21,28 @@ const OFFICIAL_DOMAINS = [
   "langchain.com"
 ];
 
+const DEFAULT_COMPETITORS = ["OpenAI", "Anthropic", "Perplexity"];
+
+const DEFAULT_COMPETITIVE_DOMAINS = [
+  "openai.com",
+  "anthropic.com",
+  "perplexity.ai",
+  "vercel.com",
+  "blog.google",
+  "producthunt.com",
+  "news.ycombinator.com",
+  "reddit.com"
+];
+
+const DEFAULT_TARGET_CHANNELS = [
+  "company blogs",
+  "changelogs",
+  "pricing pages",
+  "Product Hunt",
+  "Hacker News",
+  "Reddit"
+];
+
 function parseBooleanFlag(value) {
   if (value === undefined) {
     return true;
@@ -128,6 +150,9 @@ export function parseArgs(argv = process.argv.slice(2)) {
       case "--out-dir":
         options.outDir = argv[++index];
         break;
+      case "--deliver":
+        options.deliver = parseBooleanFlag(argv[index + 1]?.startsWith("--") ? undefined : argv[++index]);
+        break;
       case "--dry-run":
         options.dryRun = parseBooleanFlag(argv[index + 1]?.startsWith("--") ? undefined : argv[++index]);
         break;
@@ -169,13 +194,116 @@ Options:
   --vendors <csv>               Vendor names. Default: ${DEFAULT_VENDORS.join(", ")}
   --domains <csv>               Domain allowlist for web search
   --out-dir <path>              Directory for report artifacts. Default: reports
+  --deliver [bool]              Deliver the report to configured destinations
   --dry-run [bool]              Print request body without calling the API
   --verbose [bool]              Print raw API metadata
   --help                        Show this help
 `);
 }
 
+export function parseCompetitiveArgs(argv = process.argv.slice(2)) {
+  const options = {
+    productName: "AI workflow tool",
+    competitors: DEFAULT_COMPETITORS,
+    targetChannels: DEFAULT_TARGET_CHANNELS,
+    days: 7,
+    preset: "deep-research",
+    maxSteps: 3,
+    maxItemsPerCompetitor: 3,
+    domains: DEFAULT_COMPETITIVE_DOMAINS,
+    outDir: "reports",
+    dryRun: false,
+    verbose: false
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const current = argv[index];
+
+    switch (current) {
+      case "--product-name":
+        options.productName = argv[++index];
+        break;
+      case "--competitors":
+        options.competitors = parseCsv(argv[++index]);
+        break;
+      case "--target-channels":
+        options.targetChannels = parseCsv(argv[++index]);
+        break;
+      case "--days":
+        options.days = parseNumber(argv[++index], "--days");
+        break;
+      case "--preset":
+        options.preset = argv[++index];
+        break;
+      case "--max-steps":
+        options.maxSteps = parseNumber(argv[++index], "--max-steps");
+        break;
+      case "--max-items-per-competitor":
+        options.maxItemsPerCompetitor = parseNumber(argv[++index], "--max-items-per-competitor");
+        break;
+      case "--domains":
+        options.domains = parseCsv(argv[++index]);
+        break;
+      case "--out-dir":
+        options.outDir = argv[++index];
+        break;
+      case "--deliver":
+        options.deliver = parseBooleanFlag(argv[index + 1]?.startsWith("--") ? undefined : argv[++index]);
+        break;
+      case "--dry-run":
+        options.dryRun = parseBooleanFlag(argv[index + 1]?.startsWith("--") ? undefined : argv[++index]);
+        break;
+      case "--verbose":
+        options.verbose = parseBooleanFlag(argv[index + 1]?.startsWith("--") ? undefined : argv[++index]);
+        break;
+      case "--help":
+      case "-h":
+        options.help = true;
+        break;
+      default:
+        throw new Error(`Unknown argument: ${current}`);
+    }
+  }
+
+  if (!options.productName.trim()) {
+    throw new Error("--product-name is required.");
+  }
+
+  if (options.competitors.length === 0) {
+    throw new Error("At least one competitor is required.");
+  }
+
+  if (options.maxSteps > 10) {
+    throw new Error("--max-steps cannot exceed 10.");
+  }
+
+  return options;
+}
+
+export function printCompetitiveHelp() {
+  console.log(`Usage: npm run competitive -- [options]
+
+Options:
+  --product-name <name>             Your product name. Default: AI workflow tool
+  --competitors <csv>               Competitor names. Default: ${DEFAULT_COMPETITORS.join(", ")}
+  --target-channels <csv>           Channels to emphasize in research
+  --days <n>                        Look back window in days. Default: 7
+  --preset <name>                   Perplexity preset. Default: deep-research
+  --max-steps <n>                   Override preset max steps. Default: 3
+  --max-items-per-competitor <n>    Cap signals per competitor. Default: 3
+  --domains <csv>                   Domain allowlist for web search
+  --out-dir <path>                  Directory for report artifacts. Default: reports
+  --deliver [bool]                  Deliver the report to configured destinations
+  --dry-run [bool]                  Print request body without calling the API
+  --verbose [bool]                  Print raw API metadata
+  --help                            Show this help
+`);
+}
+
 export const defaults = {
   DEFAULT_VENDORS,
-  OFFICIAL_DOMAINS
+  OFFICIAL_DOMAINS,
+  DEFAULT_COMPETITORS,
+  DEFAULT_COMPETITIVE_DOMAINS,
+  DEFAULT_TARGET_CHANNELS
 };

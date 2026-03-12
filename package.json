@@ -6,6 +6,7 @@
   "description": "Minimal release-monitoring MVP built on the Perplexity Agent API.",
   "scripts": {
     "start": "node src/cli.js",
+    "competitive": "node src/competitive-cli.js",
     "serve": "node src/server.js",
     "test": "node --test"
   },

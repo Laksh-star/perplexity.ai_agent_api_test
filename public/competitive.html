@@ -3,20 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Agent API Release Monitor</title>
+    <title>Agent API Competitive Monitor</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <div class="page-shell">
       <header class="hero">
         <nav class="top-nav">
-          <a class="nav-link nav-link-active" href="/">Release Monitor</a>
-          <a class="nav-link" href="/competitive">Competitive Monitor</a>
+          <a class="nav-link" href="/">Release Monitor</a>
+          <a class="nav-link nav-link-active" href="/competitive">Competitive Monitor</a>
         </nav>
         <p class="eyebrow">Perplexity Agent API Test</p>
-        <h1>Release monitor for official AI vendor updates.</h1>
+        <h1>Competitive monitor for founder-grade market signals.</h1>
         <p class="lede">
-          Run the release-monitor workflow from the browser, inspect structured results, and keep the raw API artifacts on disk.
+          Track launches, pricing moves, positioning changes, and user pain points across competitors, then turn that research into counter-moves you can ship this week.
         </p>
         <div class="status-strip">
           <span id="health-pill" class="pill pill-muted">Checking API key</span>
@@ -32,13 +32,18 @@
           </div>
 
           <form id="run-form">
+            <label class="field">
+              <span>Your product</span>
+              <input name="productName" type="text" placeholder="AI workflow tool">
+            </label>
+
             <div class="field-grid">
               <label class="field">
                 <span>Preset</span>
                 <select name="preset">
                   <option value="fast-search">fast-search</option>
-                  <option value="pro-search" selected>pro-search</option>
-                  <option value="deep-research">deep-research</option>
+                  <option value="pro-search">pro-search</option>
+                  <option value="deep-research" selected>deep-research</option>
                 </select>
               </label>
 
@@ -53,24 +58,29 @@
               </label>
 
               <label class="field">
-                <span>Updates per vendor</span>
-                <input name="maxItemsPerVendor" type="number" min="1" max="5" value="2">
+                <span>Signals per competitor</span>
+                <input name="maxItemsPerCompetitor" type="number" min="1" max="5" value="3">
               </label>
             </div>
 
             <label class="field">
-              <span>Vendors</span>
-              <textarea name="vendors" rows="5"></textarea>
+              <span>Competitors</span>
+              <textarea name="competitors" rows="4"></textarea>
             </label>
 
             <label class="field">
-              <span>Official domains</span>
+              <span>Target channels</span>
+              <textarea name="targetChannels" rows="3"></textarea>
+            </label>
+
+            <label class="field">
+              <span>Domain allowlist</span>
               <textarea name="domains" rows="4"></textarea>
             </label>
 
             <label class="toggle-field">
               <input name="restrictDomains" type="checkbox" checked>
-              <span>Restrict to official domains</span>
+              <span>Restrict to official or high-signal domains</span>
             </label>
 
             <label class="toggle-field">
@@ -92,18 +102,18 @@
           </div>
 
           <div id="feedback" class="feedback feedback-muted">
-            The app will show the overview, per-vendor updates, and artifact paths here.
+            The app will show the competitive overview, per-competitor signals, and artifact paths here.
           </div>
 
           <div id="agent-evidence" class="agent-evidence" hidden></div>
           <div id="artifacts" class="artifact-list" hidden></div>
           <div id="overview" class="overview" hidden></div>
-          <div id="vendor-results" class="vendor-results" hidden></div>
+          <div id="competitor-results" class="vendor-results" hidden></div>
           <pre id="request-preview" class="request-preview" hidden></pre>
         </section>
       </main>
     </div>
 
-    <script type="module" src="/app.js"></script>
+    <script type="module" src="/competitive.js"></script>
   </body>
   </html>

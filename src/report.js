@@ -144,6 +144,10 @@ function matchSources(sourceTitles, sources) {
   return dedupeSources(narrowedMatches);
 }
 
+export function matchSourcesToTitles(sourceTitles, sources) {
+  return matchSources(sourceTitles, sources);
+}
+
 export function enrichReport(report, response, options) {
   const sources = collectSources(response);
 

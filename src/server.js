@@ -4,7 +4,14 @@ import http from "node:http";
 import { fileURLToPath } from "node:url";
 import { loadEnvFile, defaults } from "./config.js";
 import { buildRequestBody } from "./perplexity.js";
-import { coerceRunOptions, executeMonitor } from "./app.js";
+import { buildCompetitiveRequestBody } from "./competitive.js";
+import {
+  coerceCompetitiveOptions,
+  coerceRunOptions,
+  executeCompetitiveWorkflow,
+  executeMonitor,
+  getConfiguredDestinations
+} from "./app.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,7 +68,12 @@ function getContentType(filePath) {
 }
 
 function serveStaticAsset(requestPath, response) {
-  const target = requestPath === "/" ? "/index.html" : requestPath;
+  const target =
+    requestPath === "/"
+      ? "/index.html"
+      : requestPath === "/competitive"
+        ? "/competitive.html"
+        : requestPath;
   const normalizedPath = path.normalize(target).replace(/^(\.\.[/\\])+/, "");
   const filePath = path.join(publicDir, normalizedPath);
 
@@ -94,6 +106,37 @@ function getDefaultOptions() {
   };
 }
 
+function getCompetitiveDefaults() {
+  return {
+    productName: "AI workflow tool",
+    competitors: defaults.DEFAULT_COMPETITORS,
+    targetChannels: defaults.DEFAULT_TARGET_CHANNELS,
+    days: 7,
+    preset: "deep-research",
+    maxSteps: 3,
+    maxItemsPerCompetitor: 3,
+    domains: defaults.DEFAULT_COMPETITIVE_DOMAINS,
+    outDir: "reports"
+  };
+}
+
+function buildExecutionPayload(execution) {
+  const outputTypes = (execution.response.output ?? []).map((item) => item.type);
+
+  return {
+    ok: true,
+    report: execution.report,
+    artifacts: execution.artifacts,
+    usage: execution.response.usage ?? null,
+    response_id: execution.response.id,
+    model: execution.response.model,
+    status: execution.response.status,
+    output_types: outputTypes,
+    tool_calls_details: execution.response.usage?.tool_calls_details ?? {},
+    delivery: execution.delivery
+  };
+}
+
 async function handleApiRun(request, response) {
   const rawBody = await readRequestBody(request);
   const payload = rawBody ? JSON.parse(rawBody) : {};
@@ -109,20 +152,35 @@ async function handleApiRun(request, response) {
     return;
   }
 
-  const execution = await executeMonitor(options, { cwd, writeArtifacts: true });
-  const outputTypes = (execution.response.output ?? []).map((item) => item.type);
-
-  sendJson(response, 200, {
-    ok: true,
-    report: execution.report,
-    artifacts: execution.artifacts,
-    usage: execution.response.usage ?? null,
-    response_id: execution.response.id,
-    model: execution.response.model,
-    status: execution.response.status,
-    output_types: outputTypes,
-    tool_calls_details: execution.response.usage?.tool_calls_details ?? {}
+  const execution = await executeMonitor(options, {
+    cwd,
+    writeArtifacts: true,
+    deliver: options.deliver
   });
+  sendJson(response, 200, buildExecutionPayload(execution));
+}
+
+async function handleCompetitiveRun(request, response) {
+  const rawBody = await readRequestBody(request);
+  const payload = rawBody ? JSON.parse(rawBody) : {};
+  const baseOptions = getCompetitiveDefaults();
+  const options = coerceCompetitiveOptions(payload, baseOptions);
+
+  if (payload.dryRun === true) {
+    sendJson(response, 200, {
+      ok: true,
+      mode: "dry-run",
+      requestBody: buildCompetitiveRequestBody(options)
+    });
+    return;
+  }
+
+  const execution = await executeCompetitiveWorkflow(options, {
+    cwd,
+    writeArtifacts: true,
+    deliver: options.deliver
+  });
+  sendJson(response, 200, buildExecutionPayload(execution));
 }
 
 const server = http.createServer(async (request, response) => {
@@ -132,7 +190,8 @@ const server = http.createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/api/health") {
       sendJson(response, 200, {
         ok: true,
-        has_api_key: Boolean(process.env.PERPLEXITY_API_KEY)
+        has_api_key: Boolean(process.env.PERPLEXITY_API_KEY),
+        delivery_targets: getConfiguredDestinations()
       });
       return;
     }
@@ -145,8 +204,21 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    if (request.method === "GET" && url.pathname === "/api/competitive/defaults") {
+      sendJson(response, 200, {
+        ok: true,
+        defaults: getCompetitiveDefaults()
+      });
+      return;
+    }
+
     if (request.method === "POST" && url.pathname === "/api/run") {
       await handleApiRun(request, response);
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/competitive/run") {
+      await handleCompetitiveRun(request, response);
       return;
     }
 
@@ -172,5 +244,5 @@ const host = process.env.HOST ?? "127.0.0.1";
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 
 server.listen(port, host, () => {
-  console.log(`Release monitor server listening on http://${host}:${port}`);
+  console.log(`Agent API demo server listening on http://${host}:${port}`);
 });

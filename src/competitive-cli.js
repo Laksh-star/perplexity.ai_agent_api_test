@@ -1,24 +1,24 @@
-import { loadEnvFile, parseArgs, printHelp } from "./config.js";
-import { buildRequestBody } from "./perplexity.js";
-import { executeMonitor } from "./app.js";
+import { loadEnvFile, parseCompetitiveArgs, printCompetitiveHelp } from "./config.js";
+import { buildCompetitiveRequestBody } from "./competitive.js";
+import { executeCompetitiveWorkflow } from "./app.js";
 
 async function main() {
   const cwd = process.cwd();
   loadEnvFile(cwd);
 
-  const options = parseArgs();
+  const options = parseCompetitiveArgs();
   if (options.help) {
-    printHelp();
+    printCompetitiveHelp();
     return;
   }
 
   if (options.dryRun) {
-    const requestBody = buildRequestBody(options);
+    const requestBody = buildCompetitiveRequestBody(options);
     console.log(JSON.stringify(requestBody, null, 2));
     return;
   }
 
-  const execution = await executeMonitor(options, { cwd, deliver: options.deliver });
+  const execution = await executeCompetitiveWorkflow(options, { cwd, deliver: options.deliver });
 
   console.log(`Saved JSON report to ${execution.artifacts.jsonPath}`);
   console.log(`Saved Markdown report to ${execution.artifacts.markdownPath}`);
