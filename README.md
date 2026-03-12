@@ -23,6 +23,32 @@ Both demos share the same core approach:
 
 ![Competitive Monitor UI](docs/screenshots/competitive-monitor.png)
 
+## Architecture
+
+```mermaid
+flowchart LR
+    U["User"] --> UI["Browser UI<br/>Release Monitor / Competitive Monitor"]
+    U --> CLI["CLI<br/>release / competitive"]
+
+    UI --> S["Local Node Server<br/>src/server.js"]
+    CLI --> A["Workflow Engine<br/>src/app.js"]
+    S --> A
+
+    A --> RM["Release Monitor<br/>prompt + schema + report"]
+    A --> CM["Competitive Monitor<br/>prompt + schema + report"]
+
+    RM --> API["Perplexity Agent API<br/>preset + web_search + fetch_url + json_schema"]
+    CM --> API
+
+    API --> RAW["Raw Agent API response<br/>status / output_types / tool_calls_details"]
+    RAW --> ART["Artifacts<br/>JSON / Markdown / raw.json"]
+    ART --> UI
+
+    A --> D["Delivery Layer<br/>Telegram / Slack webhook"]
+    D --> TG["Telegram"]
+    D --> SL["Slack"]
+```
+
 The official docs used for the request design:
 
 - [Agent API quickstart](https://docs.perplexity.ai/docs/agent-api/quickstart)
