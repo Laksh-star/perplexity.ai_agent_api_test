@@ -1,0 +1,15 @@
+{
+  "name": "perplexity-agent-api-test",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal release-monitoring MVP built on the Perplexity Agent API.",
+  "scripts": {
+    "start": "node src/cli.js",
+    "serve": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agent API Release Monitor</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <p class="eyebrow">Perplexity Agent API Test</p>
+        <h1>Release monitor for official AI vendor updates.</h1>
+        <p class="lede">
+          Run the release-monitor workflow from the browser, inspect structured results, and keep the raw API artifacts on disk.
+        </p>
+        <div class="status-strip">
+          <span id="health-pill" class="pill pill-muted">Checking API key</span>
+          <span id="reports-pill" class="pill pill-dark">Writes reports to <code>reports/</code></span>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel panel-form">
+          <div class="panel-head">
+            <h2>Run configuration</h2>
+            <button id="fill-defaults" type="button" class="button button-ghost">Reset defaults</button>
+          </div>
+
+          <form id="run-form">
+            <div class="field-grid">
+              <label class="field">
+                <span>Preset</span>
+                <select name="preset">
+                  <option value="fast-search">fast-search</option>
+                  <option value="pro-search" selected>pro-search</option>
+                  <option value="deep-research">deep-research</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Days back</span>
+                <input name="days" type="number" min="1" max="30" value="7">
+              </label>
+
+              <label class="field">
+                <span>Max steps</span>
+                <input name="maxSteps" type="number" min="1" max="10" value="3">
+              </label>
+
+              <label class="field">
+                <span>Updates per vendor</span>
+                <input name="maxItemsPerVendor" type="number" min="1" max="5" value="2">
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Vendors</span>
+              <textarea name="vendors" rows="5"></textarea>
+            </label>
+
+            <label class="field">
+              <span>Official domains</span>
+              <textarea name="domains" rows="4"></textarea>
+            </label>
+
+            <label class="toggle-field">
+              <input name="restrictDomains" type="checkbox" checked>
+              <span>Restrict to official domains</span>
+            </label>
+
+            <div class="actions">
+              <button type="submit" class="button button-primary">Run monitor</button>
+              <button id="dry-run" type="button" class="button button-secondary">Preview request</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel panel-results">
+          <div class="panel-head">
+            <h2>Result</h2>
+            <span id="run-meta" class="meta-text">Waiting for first run.</span>
+          </div>
+
+          <div id="feedback" class="feedback feedback-muted">
+            The app will show the overview, per-vendor updates, and artifact paths here.
+          </div>
+
+          <div id="agent-evidence" class="agent-evidence" hidden></div>
+          <div id="artifacts" class="artifact-list" hidden></div>
+          <div id="overview" class="overview" hidden></div>
+          <div id="vendor-results" class="vendor-results" hidden></div>
+          <pre id="request-preview" class="request-preview" hidden></pre>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+  </html>
